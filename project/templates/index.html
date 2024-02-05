@@ -1,0 +1,127 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TestPage</title>
+
+    <script type="text/javascript">
+        const URL = "http://localhost:8000/tos/"
+        const LIB = '//cdn.jsdelivr.net/gh/saleemkce/timeonsite@1.2.1/timeonsitetracker.min.js'
+        var Tos;
+        var Tab
+        (()=> {
+            let js, fjs = document.getElementsByTagName('script')[0];
+            if (document.getElementById('TimeOnSiteTracker')) return;
+            js = document.createElement('script');
+            js.id = 'TimeOnSiteTracker';
+            js.onload = function() {
+                console.log('script loaded')
+                let tab = {
+                    count: () => {
+                        let tabs = localStorage.getItem('tab_open');
+                        return (tabs) ? Number.parseInt(tabs) : 0
+                    },
+                    open: () => {
+                        let tabs = localStorage.getItem('tab_open');
+                        if(tab.count() >= 0){
+                            localStorage.setItem('tab_open', tab.count() + 1)
+                        }
+                        if (tabs === null){
+                            localStorage.setItem('tab_open', 0)
+                        }
+                    },
+                    close: () => {
+                        if(tab.count() > 0){
+                            localStorage.setItem('tab_open', tab.count() - 1)
+                        }
+                    },
+                    clear: () => {
+                        localStorage.setItem('tab_open', 0)
+                        localStorage.setItem('seconds', 0)
+                    },
+                    timeTab : () => {
+                            return Number.parseInt(Tos.getTimeOnPage().timeOnPage)
+                        },
+                    timeSite: () => {
+                            let seconds = localStorage.getItem('seconds')
+                            return (seconds) ? Number.parseInt(seconds) : 0
+                    },
+                    isNotChrome: () => navigator.appVersion.match('Chrome') === null,
+                    send: () => {
+                        fetch(URL, {
+                            method: "POST",
+                            mode: "no-cors",
+                            keepalive: true,
+                            headers: {
+
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                host: window.location.host, 
+                                session: Tos.getTimeOnPage().TOSSessionKey, 
+                                time: tab.timeTab()
+                            })}
+                    )},
+                    sendBeacon: () => {
+                        const blob = new Blob([JSON.stringify({ 
+                                host: window.location.host, 
+                                session: Tos.getTimeOnPage().TOSSessionKey, 
+                                time: tab.timeTab()
+                            })], { type: 'application/json; charset=UTF-8' });
+
+                        navigator.sendBeacon(URL, blob) 
+                    },
+                    sendIfLast: () => {
+                        localStorage.setItem('seconds', tab.timeSite() + tab.timeTab())
+                        if(tab.count() === 1){
+
+                            console.log('last tab')
+                            if (navigator && typeof navigator.sendBeacon === 'function' && tab.isNotChrome()) { 
+                                tab.sendBeacon() 
+                            } else { 
+                                tab.send()}
+                            tab.clear()
+                        } else {
+                            tab.close()
+                        }
+                    },
+                }
+
+                let config = {
+                    trackBy: 'seconds',
+                    trackHistoryChange: true, 
+                    callback: function(data) {
+                        if (data && data.trackingType) {
+                            if (data.trackingType == 'tos') {
+                                if (Tos.verifyData(data) != 'valid') {
+                                    console.log('Data abolished!');
+                                    return; 
+                                }
+                            }
+                            tab.sendIfLast()
+                        }
+                    }
+                };
+                if(TimeOnSiteTracker) {
+                    Tos = new TimeOnSiteTracker(config);
+                    console.log('tos initialized')
+                    tab.open()
+                    console.log(tab.count())
+                    Tab = tab
+                }
+            };
+            js.src = LIB;
+            fjs.parentNode.insertBefore(js, fjs);
+        })();
+    </script>
+</head>
+<body>
+<a href="/">enter</a>
+<a href="/" target="_blank" rel="noopener noreferrer">new tab</a>
+<a href="/admin">admin</a>
+
+</body>
+</html>
+

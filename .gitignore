@@ -1,0 +1,8 @@
+/project/db.sqlite3
+/project/celerybeat-schedule
+/venv/
+/project/staticfiles/
+*.pyc
+*.sqlite3
+/temp/
+/.idea/

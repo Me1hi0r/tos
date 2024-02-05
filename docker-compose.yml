@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  web:
+    container_name: tos-back
+    build: ./project
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./project/:/usr/src/app/
+    ports:
+      - 1337:8000
+    environment:
+      - DEBUG=1
+      - SECRET_KEY=dbaa1_i7%*3r9-=z-+_mz4r-!qeed@(-a_r(g@k8jo8y3r27%m
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+    depends_on:
+      - redis
+
+  api:
+    container_name: tos-api
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - '8000:80'
+    depends_on:
+      - clickhouse
+
+  celery:
+    build: ./project
+    container_name: tos-worker
+    command: celery -A core worker -l info
+    volumes:
+      - ./project/:/usr/src/app/
+    environment:
+      - DEBUG=1
+      - SECRET_KEY=dbaa1_i7%*3r9-=z-+_mz4r-!qeed@(-a_r(g@k8jo8y3r27%m
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+    depends_on:
+      - redis
+      - web
+
+  celery-beat:
+    build: ./project
+    container_name: tos-beat
+    command: celery -A core beat -l info
+    volumes:
+      - ./project/:/usr/src/app/
+    environment:
+      - DEBUG=1
+      - SECRET_KEY=dbaa1_i7%*3r9-=z-+_mz4r-!qeed@(-a_r(g@k8jo8y3r27%m
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+    depends_on:
+      - redis
+      - web
+
+  redis:
+    container_name: tos-redis
+    image: redis:alpine
+
+
+  clickhouse:
+    image: yandex/clickhouse-server
+    container_name: tos-click
+
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+        - click_data:/var/lib/clickhouse
+
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+
+volumes:
+  click_data:
